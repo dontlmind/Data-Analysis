@@ -1,0 +1,390 @@
+---
+title: "STA442 Assignment3"
+author: "Yeyunfei Jiang (1004170354)"
+date: "2020/11/15"
+output: pdf_document
+---
+# Death
+### Introduction:
+$~~~~$ The COVID-19 is an ongoing worldwide pandemic of coronavirus disease 2019. As of 19 November 2020, more than 56.1 million cases have been confirmed, with more than 1.34 million deaths attributed to COVID-19. \newline
+$~~~$ The research question of interest relate to the impact on COVID-19 on differnt age gruops. An imaginary government official makes the hypothesis that: 
+
+- The first wave of the COVID-19 epidemic, in March, April and May, primarily affected the elderly. Deaths amongst the elderly in the spring were well above the historical averages,whereas the under 50’s had deaths in line with previous years. 
+- The second wave, which began in September, is caused by irresponsibleyoung people, primarily university undergraduates, acting irresponsibly. In the most recent death data, there is an increase in deaths in the under 50’s whereas the over 70’s have no more deaths than would be expectedpre-covid.
+
+$~~~$ Data is from daily mortality counts in Quebec
+
+### Model:
+$$Y_{i} \sim Poisson(\lambda_i)$$
+$$log(\lambda_i) = X_i\beta + U_i + f(time)$$
+$$U_i \sim N(0,\sigma^2_U)$$
+$$f(time) \sim RW2(\sigma_t^2)$$
+$~~~~$Priors:
+$$\sigma_U \sim pc.prec(log(1.3)/1.3,0.5)$$
+$$\sigma_t \sim pc.prec(0.02,0.5)$$
+$~~~~$Where $Y_{i}$ is the motality rate in week i. $\lambda_i$ is the expected death number in week i. Response variables include sin12, cos12, sin6 and cos6, which combines to 12 month cycles term and 6 month cycles term. $U_i$ the day specific random effect, f(time) is the seasonally adjusted trend, follows a type 2 random walk.\newline
+$~~~~$The priors for $\sigma_U,\sigma_t$ are exponencial distributed, with median log(1.3)/1.3 and 0.02.\newline
+$~~~~$ By setting the prior of $\sigma_U$ to be pc.prec(log(1.3)/1.3,0.5). It assumes that the week in 75th percentile of the motality rate has 1.3 times the rate as the week in the 25th percentile.\newline
+$~~~~$ By setting the prior of $\sigma_t$ to be pc.prec(0.02,0.5). It assumes that the smooth parameter $\alpha$ is big, so that the function f(time) should be smooth.
+
+### Results:
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, include=FALSE}
+set.seed(21)
+xWide=read.table(paste0("https://www.stat.gouv.qc.ca/statistiques/",
+                        "population-demographie/deces-mortalite/",
+                        "WeeklyDeaths_QC_2010-2020_AgeGr.csv"),
+                 sep =";",skip =7,
+                 col.names =c("year","junk","age",paste0("w",1:53)))
+
+xWide=xWide[grep("^[[:digit:]]+$", xWide$year), ]
+x=reshape2::melt(xWide,id.vars =c("year","age"),
+                 measure.vars =grep("^w[[:digit:]]+$",colnames(xWide)))
+x$dead=as.numeric(gsub("[[:space:]]","", x$value))
+x$week=as.numeric(gsub("w","", x$variable))
+
+
+x=x[order(x$year, x$week, x$age), ]
+
+newYearsDay=as.Date(ISOdate(x$year,1,1))
+x$time=newYearsDay+7*(x$week-1)
+x=x[!is.na(x$dead), ]
+
+x=x[x$week<53, ]
+
+dateCutoff=as.Date("2020/3/1")
+xPreCovid=x[x$time<dateCutoff, ]
+xPostCovid=x[x$time>=dateCutoff, ]
+toForecast=expand.grid(age =unique(x$age),time =unique(xPostCovid$time),dead =NA)
+xForInla=rbind(xPreCovid[,colnames(toForecast)],toForecast)
+xForInla=xForInla[order(xForInla$time, xForInla$age),]
+
+xForInla$timeNumeric=as.numeric(xForInla$time)
+xForInla$timeForInla=(xForInla$timeNumeric-as.numeric(as.Date("2015/1/1")))/365.25
+xForInla$timeIid=xForInla$timeNumeric
+xForInla$sin12=sin(2*pi*xForInla$timeNumeric/365.25)
+xForInla$sin6=sin(2*pi*xForInla$timeNumeric*2/365.25)
+xForInla$cos12=cos(2*pi*xForInla$timeNumeric/365.25)
+xForInla$cos6=cos(2*pi*xForInla$timeNumeric*2/365.25)
+
+xForInlaTotal=xForInla[xForInla$age=='Total', ]
+xForInlaElder=xForInla[xForInla$age=='70 years old and over', ]
+xForInlaYouth=xForInla[xForInla$age=='0-49 years old', ]
+library(INLA,verbose=FALSE)
+```
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, include=FALSE}
+res1=inla(dead~sin12+sin6+cos12+cos6+f(timeIid,prior='pc.prec',param=c(log(1.1),0.5))+
+                 f(timeForInla,model='rw2',prior='pc.prec',param=c(0.2,0.5)),
+         data=xForInlaElder,
+         control.predictor =list(compute=TRUE,link=1),
+         control.compute =list(config=TRUE),family='poisson')
+```
+```{r, echo=FALSE, message=FALSE, warning=FALSE, include=FALSE}
+res2=inla(dead~sin12+sin6+cos12+cos6+f(timeIid,prior='pc.prec',param=c(log(1.1),0.5))+
+                 f(timeForInla,model='rw2',prior='pc.prec',param=c(0.2,0.5)),
+         data=xForInlaYouth,
+         control.predictor =list(compute=TRUE,link=1),
+         control.compute =list(config=TRUE),family='poisson')
+```
+```{r, echo=FALSE, message=FALSE, warning=FALSE, include=FALSE}
+library(Biobase)
+qCols=paste0(c(0.5,0.025,0.975),"quant")
+
+sampleList1=INLA::inla.posterior.sample(100, res1,selection =list(Predictor =0), seed = 21)
+sampleIntensity1=exp(do.call(cbind, Biobase::subListExtract(sampleList1,"latent")))
+sampleDeaths1=matrix(rpois(length(sampleIntensity1),sampleIntensity1),
+                     nrow(sampleIntensity1),ncol(sampleIntensity1))
+
+sampleList2=INLA::inla.posterior.sample(100, res2,selection =list(Predictor =0), seed = 21)
+sampleIntensity2=exp(do.call(cbind, Biobase::subListExtract(sampleList2,"latent")))
+sampleDeaths2=matrix(rpois(length(sampleIntensity2),sampleIntensity2),
+                     nrow(sampleIntensity2),ncol(sampleIntensity2))
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE,fig.show="hold", out.width="50%"}
+matplot(xForInlaElder$time, sampleDeaths1,col ="#00000010",lwd =2,
+        lty =1,type ="l",log ="y",xaxt='n',ylim=c(500, 2000),xlab="time"
+        ,ylab="mortality (per week)",
+        main="Figure 1A: Posterior sample of elderly mortality (2010-2021)")
+points(x[x$age=="70 years old and over",c("time","dead")],col ="red",cex =0.5)
+y1=as.Date(c("2010/1/1","2020/1/1"))
+y1=seq(y1[1], y1[2],by ="1 year")
+axis(1,as.numeric(y1),format(y1,"%Y"))
+legend("topleft",col =c("black","red"),legend =c("sample","data"),
+       bty ="n",pch =c(NA,1),lty=c(1,0),lwd =c(3,1))
+
+matplot(xForInlaYouth$time, sampleDeaths2,col ="#00000010",
+        lwd =2,lty =1,type ="l",log ="y",xaxt='n',xlab="time",ylab="mortality (per week)",
+        main="Figure 1B: Posterior sample of youth mortality (2010-2021)")
+
+axis(1,as.numeric(y1),format(y1,"%Y"))
+
+points(x[x$age=="0-49 years old",c("time","dead")],col ="red",cex =0.5)
+legend("bottomleft",col =c("black","red"),legend =c("sample","data"),
+       bty ="n",pch =c(NA,1),lty=c(1,0),lwd =c(3,1))
+
+
+```
+
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, include=FALSE}
+xPostCovidElder=xPostCovid[xPostCovid$age == "70 years old and over",]
+xPostCovidForecastElder=sampleDeaths1[match(xPostCovidElder$time,xForInlaElder$time), ]
+excessDeathsElder=xPostCovidElder$dead-xPostCovidForecastElder
+
+xPostCovidYouth=xPostCovid[xPostCovid$age=="0-49 years old",]
+xPostCovidForecastYouth=sampleDeaths2[match(xPostCovidYouth$time,xForInlaYouth$time), ]
+excessDeathsYouth=xPostCovidYouth$dead-xPostCovidForecastYouth
+
+excessDeathsElderSub1=excessDeathsElder[xPostCovidElder$time>as.Date("2020/03/01")&
+                                                xPostCovidElder$time<as.Date("2020/06/01"), ]
+excessDeathsElderInPeriod1=apply(excessDeathsElderSub1,2, sum)
+
+excessDeathsElderSub2=excessDeathsElder[xPostCovidElder$time>as.Date("2020/09/01"),]
+excessDeathsElderInPeriod2=apply(excessDeathsElderSub2,2, sum)
+
+excessDeathsYouthSub1=excessDeathsYouth[xPostCovidYouth$time>as.Date("2020/03/01")&
+                                                xPostCovidYouth$time<as.Date("2020/06/01"), ]
+excessDeathsYouthInPeriod1=apply(excessDeathsYouthSub1,2, sum)
+
+excessDeathsYouthSub2=excessDeathsYouth[xPostCovidYouth$time>as.Date("2020/10/01"),]
+excessDeathsYouthInPeriod2=apply(excessDeathsYouthSub2,2, sum)
+
+quant1=round(quantile(excessDeathsElderInPeriod1, probs = c(0.025,0.975,0.5)))
+quant2=round(quantile(excessDeathsElderInPeriod2, probs = c(0.025,0.975,0.5)))
+quant3=round(quantile(excessDeathsYouthInPeriod1, probs = c(0.025,0.975,0.5)))
+quant4=round(quantile(excessDeathsYouthInPeriod2, probs = c(0.025,0.975,0.5)))
+
+y2=as.Date(c("2010/1/1","2021/1/1"))
+y2=seq(y2[1], y2[2],by ="1 month")
+
+```
+```{r, echo=FALSE, message=FALSE, warning=FALSE,fig.show="hold", out.width="50%"}
+matplot(xPostCovidElder$time, xPostCovidForecastElder,type ="l", xlab='time',
+        ylim =c(800,2000),col ="#00000050",xaxt='n',ylab='mortality (per week)',
+        main = "Figure 2A: Posterior sample of elderly mortality (2020)")
+points(xPostCovidElder[,c("time","dead")],col ="red",lwd = 2)
+axis(1,as.numeric(y2),format(y2,"%b"))
+
+matplot(xPostCovidYouth$time, xPostCovidForecastYouth,type ="l",
+        col ="#00000030",xaxt='n',ylab='mortality (per week)',xlab='time',
+        main="Figure 2B: Posterior sample of youth mortality (2010)")
+points(xPostCovidYouth[,c("time","dead")],col ="red",lwd = 2)
+axis(1,as.numeric(y2),format(y2,"%b"))
+
+```
+```{r, echo=FALSE, message=FALSE, warning=FALSE,fig.show="hold", out.width="50%"}
+matplot(xPostCovidElder$time, excessDeathsElder,type ="l",lty =1,col=mapmisc::col2html(RColorBrewer::brewer.pal(2,'Set3'),0.7),
+        xaxt='n',ylim=c(-2000,2000),xlab='time',ylab='Excess Death',
+        main='Figure 3A: 100 Samples of Elderly Excess Death (2020)')
+
+axis(1,as.numeric(y2),format(y2,"%b"))
+
+matplot(xPostCovidYouth$time, excessDeathsYouth,type ="l",lty =1,col=mapmisc::col2html(RColorBrewer::brewer.pal(2,'Set3'),0.5),
+        xaxt='n', xlab='time',ylab='Excess Death',
+        main='Figure 3B: 100 Samples of Youth Excess Death (2020)')
+axis(1,as.numeric(y2),format(y2,"%b"))
+```
+```{r, echo=FALSE, message=FALSE, warning=FALSE,fig.show="hold", out.width="50%"}
+hist(excessDeathsElderInPeriod1,xlab = 'Excess death',
+     main ='Histogram 1A: 100 Samples of Elderly Excess Death (Mar - Jun)' )
+abline(v=c(quant1['2.5%'],quant1['97.5%'],quant1['50%']),type = 'l', col='red', lty= 2)
+legend("topleft",col ="red",legend ="2.5%, 50%, 97.5% Quantile",bty ="n", lty= 1 ,lwd =3)
+
+
+hist(excessDeathsElderInPeriod2,xlab = 'Excess death',
+     main='Histogram 2A: 100 Samples of Elderly Excess Death (Sep - Nov)')
+abline(v=c(quant2['2.5%'],quant2['97.5%'],quant2['50%']),type = 'l', col='red', lty= 2)
+legend("topleft",col ="red",legend ="2.5%, 50%, 97.5% Quantile",bty ="n", lty= 1 ,lwd =3)
+
+hist(excessDeathsYouthInPeriod1,xlab = 'Excess death', 
+     main='Histogram 1B: 100 Samples of Youth Excess Death (Mar - Jun)')
+abline(v=c(quant3['2.5%'],quant3['97.5%'],quant3['50%']),type = 'l', col='red', lty= 2)
+legend("topleft",col ="red",legend ="2.5%, 50%, 97.5% Quantile",bty ="n", lty= 1 ,lwd =3)
+
+hist(excessDeathsYouthInPeriod2,xlab = 'Excess death',
+     main='Histogram 2B: 100 Samples of Youth Excess Death (Sep - Nov)')
+abline(v=c(quant4['2.5%'],quant4['97.5%'],quant4['50%']),type = 'l', col='red', lty= 2)
+legend("topleft",col ="red",legend ="2.5%, 50%, 97.5% Quantile",bty ="n", lty= 1 ,lwd =3)
+
+
+```
+
+\newpage
+
+### Discussion:
+$~~~~$ As shown in Figure 2A, the real data points of elderly mortality during the first wave of the COVID-19 epidemic(March to May) have a unusual fluctuation, and have a higher mortality rate than most of the posterior samples. Moreover, from Figure 3A the elderly excess death due to Covid19 in March, April and May has an obvious upward sloping. Also, by Histogram 1A, the 2.5% and 97.5% quantile is (1136,7370), which shows that elderly excess death during march and June is positive, in another word, at least 95% of the samples shows that the excess death is above 0, and median of 4660. Thus, the first wave of Cov-19 does affect the elderly.\newline
+$~~~~$ On the contrary, the youth gruop has a much lower excess death during the first wave of Cov-19. As show in Figure 2B, there is only a few weeks the real data of mortality is visibly higher than the samples.  Furthermore, on Histogram 1B, the 2.5% and 97.5% quantile is (12,160), and median (84), which shows that the interval of youth excess death does not overlap with elder's, and is much lower than elderly on March to June.\newline
+$~~~~$ As shown in Figure 2A, the impact on elderly mortality is not so significant compared to the first wave, the real data points seems to fit the predicted posterior samples. Which can also be seen in Figure 3A, the samples does not agree with each other and have a wider interval, after the second wave started. Also, by Histogram 2A, the 2.5% and 97.5% quantile is (-13391, 6267), which include zero and overlap with the quantile in Histogram 1A, hence we can not determine the impact on elderly during second wave.\newline
+$~~~~$Similary, this is true for the youth gruop during second wave. From Histogram 2B, the 2.5% and 97.5% quantile is (-9,51), which also include zero and overlap with the quantile in Histogram 1B and 2A.
+
+### Summary of Conclusion:
+$~~~~$ The study modelled the trend of mortality in Quebec for each age gruop, and predicted the trending without Covid-19, moreover, the excess death due to Covid-19 epidemic. \newline
+$~~~~$ As a result, this model supports the hypothesis that the first wave of the COVID-19 epidemic, in March, April and May, primarily affected the elderly. The elderly excess death due to Covid-19 is signficantly higher than youth.\newline
+$~~~~$ However, this study does not agree with that the second wave, which began in September, is caused by irresponsibleyoung people. In evidence, the excess death of youth dose not signficant increased compared to the first wave. Also, it does not provide evidence that the elderly have no more deaths than would be expected pre-covid.
+\newpage
+
+### Appendix:
+```{r message=FALSE, warning=FALSE, results=FALSE, tidy=TRUE, eval=FALSE}
+xWide=read.table(paste0("https://www.stat.gouv.qc.ca/statistiques/",
+                        "population-demographie/deces-mortalite/",
+                        "WeeklyDeaths_QC_2010-2020_AgeGr.csv"),
+                 sep =";",skip =7,
+                 col.names =c("year","junk","age",paste0("w",1:53)))
+
+xWide=xWide[grep("^[[:digit:]]+$", xWide$year), ]
+x=reshape2::melt(xWide,id.vars =c("year","age"),
+                 measure.vars =grep("^w[[:digit:]]+$",colnames(xWide)))
+x$dead=as.numeric(gsub("[[:space:]]","", x$value))
+x$week=as.numeric(gsub("w","", x$variable))
+x=x[order(x$year, x$week, x$age), ]
+
+newYearsDay=as.Date(ISOdate(x$year,1,1))
+x$time=newYearsDay+7*(x$week-1)
+x=x[!is.na(x$dead), ]
+x=x[x$week<53, ]
+
+dateCutoff=as.Date("2020/3/1")
+xPreCovid=x[x$time<dateCutoff, ]
+xPostCovid=x[x$time>=dateCutoff, ]
+toForecast=expand.grid(age =unique(x$age),time =unique(xPostCovid$time),dead =NA)
+xForInla=rbind(xPreCovid[,colnames(toForecast)],toForecast)
+xForInla=xForInla[order(xForInla$time, xForInla$age),]
+
+xForInla$timeNumeric=as.numeric(xForInla$time)
+xForInla$timeForInla=(xForInla$timeNumeric-as.numeric(as.Date("2015/1/1")))/365.25
+xForInla$timeIid=xForInla$timeNumeric
+xForInla$sin12=sin(2*pi*xForInla$timeNumeric/365.25)
+xForInla$sin6=sin(2*pi*xForInla$timeNumeric*2/365.25)
+xForInla$cos12=cos(2*pi*xForInla$timeNumeric/365.25)
+xForInla$cos6=cos(2*pi*xForInla$timeNumeric*2/365.25)
+
+xForInlaTotal=xForInla[xForInla$age=='Total', ]
+xForInlaElder=xForInla[xForInla$age=='70 years old and over', ]
+xForInlaYouth=xForInla[xForInla$age=='0-49 years old', ]
+library(INLA,verbose=FALSE)
+
+res1=inla(dead~sin12+sin6+cos12+cos6+f(timeIid,prior='pc.prec',param=c(log(1.1),0.5))+
+                 f(timeForInla,model='rw2',prior='pc.prec',param=c(0.2,0.5)),
+         data=xForInlaElder,
+         control.predictor =list(compute=TRUE,link=1),
+         control.compute =list(config=TRUE),family='poisson')
+
+res2=inla(dead~sin12+sin6+cos12+cos6+f(timeIid,prior='pc.prec',param=c(log(1.1),0.5))+
+                 f(timeForInla,model='rw2',prior='pc.prec',param=c(0.2,0.5)),
+         data=xForInlaYouth,
+         control.predictor =list(compute=TRUE,link=1),
+         control.compute =list(config=TRUE),family='poisson')
+
+library(Biobase)
+qCols=paste0(c(0.5,0.025,0.975),"quant")
+
+sampleList1=INLA::inla.posterior.sample(100, res1,selection =list(Predictor =0), seed = 21)
+sampleIntensity1=exp(do.call(cbind, Biobase::subListExtract(sampleList1,"latent")))
+sampleDeaths1=matrix(rpois(length(sampleIntensity1),sampleIntensity1),
+                     nrow(sampleIntensity1),ncol(sampleIntensity1))
+
+sampleList2=INLA::inla.posterior.sample(100, res2,selection =list(Predictor =0), seed = 21)
+sampleIntensity2=exp(do.call(cbind, Biobase::subListExtract(sampleList2,"latent")))
+sampleDeaths2=matrix(rpois(length(sampleIntensity2),sampleIntensity2),
+                     nrow(sampleIntensity2),ncol(sampleIntensity2))
+
+matplot(xForInlaElder$time, sampleDeaths1,col ="#00000010",lwd =2,
+        lty =1,type ="l",log ="y",xaxt='n',ylim=c(500, 2000),xlab="time"
+        ,ylab="mortality (per week)",
+        main="Figure 1A: Posterior sample of elderly mortality (2010-2021)")
+points(x[x$age=="70 years old and over",c("time","dead")],col ="red",cex =0.5)
+y1=as.Date(c("2010/1/1","2020/1/1"))
+y1=seq(y1[1], y1[2],by ="1 year")
+axis(1,as.numeric(y1),format(y1,"%Y"))
+legend("topleft",col =c("black","red"),legend =c("sample","data"),
+       bty ="n",pch =c(NA,1),lty=c(1,0),lwd =c(3,1))
+
+matplot(xForInlaYouth$time, sampleDeaths2,col ="#00000010",
+        lwd =2,lty =1,type ="l",log ="y",xaxt='n',xlab="time",ylab="mortality (per week)",
+        main="Figure 1B: Posterior sample of youth mortality (2010-2021)")
+
+axis(1,as.numeric(y1),format(y1,"%Y"))
+
+points(x[x$age=="0-49 years old",c("time","dead")],col ="red",cex =0.5)
+legend("bottomleft",col =c("black","red"),legend =c("sample","data"),
+       bty ="n",pch =c(NA,1),lty=c(1,0),lwd =c(3,1))
+
+xPostCovidElder=xPostCovid[xPostCovid$age == "70 years old and over",]
+xPostCovidForecastElder=sampleDeaths1[match(xPostCovidElder$time,xForInlaElder$time), ]
+excessDeathsElder=xPostCovidElder$dead-xPostCovidForecastElder
+
+xPostCovidYouth=xPostCovid[xPostCovid$age=="0-49 years old",]
+xPostCovidForecastYouth=sampleDeaths2[match(xPostCovidYouth$time,xForInlaYouth$time), ]
+excessDeathsYouth=xPostCovidYouth$dead-xPostCovidForecastYouth
+
+excessDeathsElderSub1=excessDeathsElder[xPostCovidElder$time>as.Date("2020/03/01")&
+                                                xPostCovidElder$time<as.Date("2020/06/01"), ]
+excessDeathsElderInPeriod1=apply(excessDeathsElderSub1,2, sum)
+
+excessDeathsElderSub2=excessDeathsElder[xPostCovidElder$time>as.Date("2020/09/01"),]
+excessDeathsElderInPeriod2=apply(excessDeathsElderSub2,2, sum)
+
+excessDeathsYouthSub1=excessDeathsYouth[xPostCovidYouth$time>as.Date("2020/03/01")&
+                                                xPostCovidYouth$time<as.Date("2020/06/01"), ]
+excessDeathsYouthInPeriod1=apply(excessDeathsYouthSub1,2, sum)
+
+excessDeathsYouthSub2=excessDeathsYouth[xPostCovidYouth$time>as.Date("2020/10/01"),]
+excessDeathsYouthInPeriod2=apply(excessDeathsYouthSub2,2, sum)
+
+quant1=round(quantile(excessDeathsElderInPeriod1, probs = c(0.025,0.975,0.5)))
+quant2=round(quantile(excessDeathsElderInPeriod2, probs = c(0.025,0.975,0.5)))
+quant3=round(quantile(excessDeathsYouthInPeriod1, probs = c(0.025,0.975,0.5)))
+quant4=round(quantile(excessDeathsYouthInPeriod2, probs = c(0.025,0.975,0.5)))
+
+y2=as.Date(c("2010/1/1","2021/1/1"))
+y2=seq(y2[1], y2[2],by ="1 month")
+
+matplot(xPostCovidElder$time, xPostCovidForecastElder,type ="l", xlab='time',
+        ylim =c(800,2000),col ="#00000050",xaxt='n',ylab='mortality (per week)',
+        main = "Figure 2A: Posterior sample of elderly mortality (2020)")
+points(xPostCovidElder[,c("time","dead")],col ="red",lwd = 2)
+axis(1,as.numeric(y2),format(y2,"%b"))
+
+matplot(xPostCovidYouth$time, xPostCovidForecastYouth,type ="l",
+        col ="#00000030",xaxt='n',ylab='mortality (per week)',xlab='time',
+        main="Figure 2B: Posterior sample of youth mortality (2010)")
+points(xPostCovidYouth[,c("time","dead")],col ="red",lwd = 2)
+axis(1,as.numeric(y2),format(y2,"%b"))
+
+matplot(xPostCovidElder$time, excessDeathsElder,type ="l",lty =1,col=mapmisc::col2html(RColorBrewer::brewer.pal(2,'Set3'),0.7),
+        xaxt='n',ylim=c(-2000,2000),xlab='time',ylab='Excess Death',
+        main='Figure 3A: 100 Samples of Elderly Excess Death (2020)')
+
+axis(1,as.numeric(y2),format(y2,"%b"))
+
+matplot(xPostCovidYouth$time, excessDeathsYouth,type ="l",lty =1,col=mapmisc::col2html(RColorBrewer::brewer.pal(2,'Set3'),0.5),
+        xaxt='n', xlab='time',ylab='Excess Death',
+        main='Figure 3B: 100 Samples of Youth Excess Death (2020)')
+axis(1,as.numeric(y2),format(y2,"%b"))
+
+hist(excessDeathsElderInPeriod1,xlab = 'Excess death',
+     main ='Histogram 1A: 100 Samples of Elderly Excess Death (Mar - Jun)' )
+abline(v=c(quant1['2.5%'],quant1['97.5%'],quant1['50%']),type = 'l', col='red', lty= 2)
+legend("topleft",col ="red",legend ="2.5%, 50%, 97.5% Quantile",bty ="n", lty= 1 ,lwd =3)
+
+
+hist(excessDeathsElderInPeriod2,xlab = 'Excess death',
+     main='Histogram 2A: 100 Samples of Elderly Excess Death (Sep - Nov)')
+abline(v=c(quant2['2.5%'],quant2['97.5%'],quant2['50%']),type = 'l', col='red', lty= 2)
+legend("topleft",col ="red",legend ="2.5%, 50%, 97.5% Quantile",bty ="n", lty= 1 ,lwd =3)
+
+hist(excessDeathsYouthInPeriod1,xlab = 'Excess death', 
+     main='Histogram 1B: 100 Samples of Youth Excess Death (Mar - Jun)')
+abline(v=c(quant3['2.5%'],quant3['97.5%'],quant3['50%']),type = 'l', col='red', lty= 2)
+legend("topleft",col ="red",legend ="2.5%, 50%, 97.5% Quantile",bty ="n", lty= 1 ,lwd =3)
+
+hist(excessDeathsYouthInPeriod2,xlab = 'Excess death',
+     main='Histogram 2B: 100 Samples of Youth Excess Death (Sep - Nov)')
+abline(v=c(quant4['2.5%'],quant4['97.5%'],quant4['50%']),type = 'l', col='red', lty= 2)
+legend("topleft",col ="red",legend ="2.5%, 50%, 97.5% Quantile",bty ="n", lty= 1 ,lwd =3)
+```
