@@ -1,0 +1,220 @@
+---
+title: "American Youth Smoking Rate"
+author: "Yeyunfei Jiang (1004170354)"
+date: "2020/10/25"
+output: pdf_document
+---
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+dataDir = '../data' 
+smokeFile = file.path(dataDir, 'smoke2014.RData') 
+if(!file.exists(smokeFile)){  
+  download.file(
+      'http://pbrown.ca/teaching/appliedstats/data/smoke2014.RData',
+      smokeFile) 
+} 
+load(smokeFile) 
+
+forInla = smoke[,c('Age','ever_cigarettes','Sex','Race', 
+        'state','school', 'RuralUrban')]
+forInla = na.omit(forInla)
+forInlasub = forInla[which(forInla$Age >= 11& forInla$Age <19 ), ]
+forInlasub$y = as.numeric(forInlasub$ever_cigarettes)
+forInlasub$ageFac =factor(forInlasub$Age)
+
+```
+### Introduction:
+$~~~~$Cigarette smoking amongst children is known to be more common for males than females,in rural areas than urban areas, and to vary by age and ethnicity. The research question of interest ralate to the variation amongst the US states exist, and that there is variation from one school to the next, A secondary task is to convey the differences in the effect of age on smoking for white, Black,and Hispanic americans. The effect is expected to be different by sex and by rurality. Two hypothesis are made as follows:
+
+- Geographic variation (between states) in the rate of students smoking cigarettes issubstantially greater than variation amongst schools.  As a result, tobacco controlprograms should target the states with the most smoking and not concern themselveswith finding particular schools where smoking is a problem.
+- Rural-urban differences are much greater than differences between states.
+
+$~~~~$The dataset used in this study is from 2014 American National Youth Tobacco Survey, which contains over 18000 survey from Americian youth of different races and schools between age 11 - 18.
+
+
+### Method
+$~~~~$The bayesian inference is as follows:
+$$Y_{ijk} \sim Bern(\mu_{ijk})$$
+$$log(\frac{\mu_{ijk}}{1-\mu_{ijk}})=X_{ijk}\beta + U_i + Z_{ij}$$
+$$U_i \sim N(0,\sigma^2_U)$$
+$$Z_{ij} \sim N(0,\sigma^2_Z)$$
+$~~~~$Priors:
+$$\beta \sim N(0,100^2)$$
+$$ \sigma_U\sim pc.prec(log(2.5)/1.3,0.5) $$
+$$ \sigma_Z\sim pc.prec(log(1.15)/1.3,0.5) $$
+$~~~~$Where $\mu_{ij}$ is the probability of the person k in j school in i state smoke cigarettes. $Y_{ijk}$ is zero if the kth person hasn't smoke cigarettes. Response variables include age(11-17), sex(levels male, female), race(levels white, black, hispanic, asian, pacific, native), and rural/urban(levels rural, urban). $U_i$ is the state specific random effect, $Z_{ij}$ is the school specific random effect. \newline
+$~~~~$The priors for $\sigma_U,\sigma_Z$ are exponencial distributed, with median around 0.7,0.11 correspondingly. By the prior informations that collaborating scientists provided:
+
+- Some states having  double  or  triple  the  rate  of  smoking  update  compared  other  states  for comparable individuals.Within a given state.
+- Within a given state, a differences of 10% to 20% in smoking rates is moretypical.
+
+$~~~~$ By setting the prior of $\sigma_U$ to be pc.prec(log(2.5)/1.3,0.5). It assumes that person in the 75th percentile of the smoking state has 2.5 times the odds of being smoking cigarettes as the person in the 25th percentile state.\newline
+$~~~~$ By setting the prior of $\sigma_Z$ to be pc.prec(log(1.15)/1.3,0.5). It assumes that person in the 75th percentile of the smoking school has 1.15 times the odds of being smoking cigarettes as the person in the 25th percentile school.
+
+
+### Result:
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+library(INLA)
+
+ toPredict = expand.grid(
+    ageFac = levels(forInlasub$ageFac),
+    RuralUrban = levels(forInlasub$RuralUrban),
+    Sex = levels(forInlasub$Sex),
+    Race = levels(forInlasub$Race)
+    )
+forLincombs = do.call(inla.make.lincombs, 
+  as.data.frame(model.matrix( ~ Sex+RuralUrban*ageFac*Race, 
+    data=toPredict)))
+
+inla2 = inla(y ~ Sex+RuralUrban*ageFac*Race
+             +f(state, model='iid', prior = 'pc.prec',param = c(log(2.5)/1.3 ,0.5)) 
+             +f(school, model='iid', prior = 'pc.prec',param = c(log(1.15)/1.3 ,0.5)) 
+             ,data=forInlasub ,family='binomial'
+             ,lincomb = forLincombs
+             ,control.fixed = list(mean=0, mean.intercept=0,prec=100^(-2),prec.intercept=100^(-2))
+             )
+```
+
+```{r message=FALSE, warning=FALSE, echo=FALSE}
+library(Pmisc)
+odds = exp(inla2$summary.fixed[1:15,1:6])
+oddsp = odds/(1+odds)
+knitr::kable(inla2$summary.fixed[1:15,1:6],digit=3, caption = "Log odds of fixed effect parameter estimate and 95% CI(interaction not included)")
+```
+
+
+```{r message=FALSE, warning=FALSE, echo=FALSE}
+knitr::kable(oddsp,digit=3, caption = "Probability of fixed effect parameter estimate and 95% CI(interaction not included)")
+sdRes2 = Pmisc::priorPostSd(inla2)
+```
+
+```{r message=FALSE, warning=FALSE, echo=FALSE}
+knitr::kable(sdRes2$summary,digits =3, caption = "Random effect sandard diviation and 95% CI")
+```
+
+$~~~~$**Prior and posterior distribution graph for school, classUnique, and studentUnique:**
+```{r echo=FALSE, message=FALSE, warning=FALSE,fig.show="hold", out.width="50%"}
+do.call(matplot, sdRes2$state$matplot)
+do.call(legend, sdRes2$legend)
+mtext('State', side=3)
+do.call(matplot, sdRes2$school$matplot)
+do.call(legend, sdRes2$legend)
+mtext('School', side=3)
+```
+
+$~~~~$**Posterior medians of probabilities of smoking over age by race:**
+```{r echo=FALSE, message=FALSE, warning=FALSE,fig.show="hold", out.width="50%"}
+theCoef = exp(inla2$summary.lincomb.derived[,
+    c('0.5quant','0.025quant','0.975quant')])
+theCoef = theCoef/(1+theCoef)
+
+
+toPredict$Age = as.numeric(as.character(toPredict$ageFac))
+
+isRural = toPredict$RuralUrban =='Rural'
+isUrban = toPredict$RuralUrban =='Urban'
+isMale = toPredict$Sex == 'M'
+isFemale = toPredict$Sex == 'F'
+
+shiftwhite = 0.1*(toPredict$Race == 'white')
+shifthispanic = 0.2*(toPredict$Race == 'hispanic')
+theSd = inla2$summary.lincomb.derived[,'sd']
+theCex = min(theSd)/theSd
+
+plot(toPredict[isMale&isRural,'Age'] + shiftwhite[isMale&isRural] + shifthispanic[isMale&isRural], 
+  theCoef[isMale&isRural,'0.5quant'], 
+  xlab='age', ylab='probability', ylim = c(0.015, 1),
+  pch = 15, log='y', 
+  cex = 2*theCex,
+  col = mapmisc::col2html(
+    c(black = 'black', white = 'red',hispanic = 'blue')[as.character(toPredict[isMale&isRural,'Race'])],
+    0.4),
+  main = 'Figure 1: Rural Male'
+  )
+
+segments(toPredict[isMale&isRural,'Age']+ shiftwhite[isMale&isRural] + shifthispanic[isMale&isRural], 
+  theCoef[isMale&isRural,'0.025quant'], 
+  y1=theCoef[isMale&isRural,'0.975quant'],
+  col = c(black = 'black', white = 'red',hispanic = 'blue')[as.character(toPredict[isMale&isRural,'Race'])])
+
+
+legend('bottomright', pch=16, col=c('black','red','blue'), legend = c('black','white', 'hispanic'),
+  bty='n')
+
+plot(toPredict[isMale&isUrban,'Age'] + shiftwhite[isMale&isUrban] + shifthispanic[isMale&isUrban], 
+  theCoef[isMale&isUrban,'0.5quant'], 
+  xlab='age', ylab='probability', ylim = c(0.015, 1),
+  pch = 15, log='y', 
+  cex = 2*theCex,
+  col = mapmisc::col2html(
+    c(black = 'black', white = 'red',hispanic = 'blue')[as.character(toPredict[isMale&isUrban,'Race'])],
+    0.4),
+  main = 'Figure 2: Urban Male'
+  )
+
+segments(toPredict[isMale&isUrban,'Age']+ shiftwhite[isMale&isUrban] + shifthispanic[isMale&isUrban], 
+  theCoef[isMale&isUrban,'0.025quant'], 
+  y1=theCoef[isMale&isUrban,'0.975quant'],
+  col = c(black = 'black', white = 'red',hispanic = 'blue')[as.character(toPredict[isMale&isUrban,'Race'])])
+
+
+legend('bottomright', pch=16, col=c('black','red','blue'), legend = c('black','white', 'hispanic'),
+  bty='n')
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE,fig.show="hold", out.width="50%"}
+plot(toPredict[isFemale&isRural,'Age'] + shiftwhite[isFemale&isRural] + shifthispanic[isFemale&isRural], 
+  theCoef[isFemale&isRural,'0.5quant'], 
+  xlab='age', ylab='probability', ylim = c(0.015, 1),
+  pch = 15, log='y', 
+  cex = 2*theCex,
+  col = mapmisc::col2html(
+    c(black = 'black', white = 'red',hispanic = 'blue')[as.character(toPredict[isFemale&isRural,'Race'])],
+    0.4),
+  main = 'Figure 3: Rural Female'
+  )
+
+segments(toPredict[isFemale&isRural,'Age']+ shiftwhite[isFemale&isRural] + shifthispanic[isFemale&isRural], 
+  theCoef[isFemale&isRural,'0.025quant'], 
+  y1=theCoef[isFemale&isRural,'0.975quant'],
+  col = c(black = 'black', white = 'red',hispanic = 'blue')[as.character(toPredict[isFemale&isRural,'Race'])])
+
+
+legend('bottomright', pch=16, col=c('black','red','blue'), legend = c('black','white', 'hispanic'),
+  bty='n')
+
+plot(toPredict[isFemale&isUrban,'Age'] + shiftwhite[isFemale&isUrban] + shifthispanic[isFemale&isUrban], 
+  theCoef[isFemale&isUrban,'0.5quant'], 
+  xlab='age', ylab='probability', ylim = c(0.015, 1),
+  pch = 15, log='y', 
+  cex = 2*theCex,
+  col = mapmisc::col2html(
+    c(black = 'black', white = 'red',hispanic = 'blue')[as.character(toPredict[isFemale&isUrban,'Race'])],
+    0.4),
+  main = 'Figure 4: Urban Female'
+  )
+
+segments(toPredict[isFemale&isUrban,'Age']+ shiftwhite[isFemale&isUrban] + shifthispanic[isFemale&isUrban], 
+  theCoef[isFemale&isUrban,'0.025quant'], 
+  y1=theCoef[isFemale&isUrban,'0.975quant'],
+  col = c(black = 'black', white = 'red',hispanic = 'blue')[as.character(toPredict[isFemale&isUrban,'Race'])])
+
+
+legend('bottomright', pch=16, col=c('black','red','blue'), legend = c('black','white', 'hispanic'),
+  bty='n')
+```
+
+\newpage
+
+### Discussion:
+$~~~~$ As shown in Table 5, a 95% credible interval for standard deviation of state specific random effect is (0.135, 0.448) , and  school specific random effect is (0.399, 0.566). Apparently, the credible interval overlaps with each other, which does not support the hypothesis that geographic variation in the rate of students smoking cigarettes is substantially greater than variation amongst schools. And also, by looking at the median (0.265 and 0.476), variation amongst school should be greater than variation amongst states.\newline
+$~~~~$ From Table 5 , the 95th CI of odds of the person in the smoking state with one standard deviation compare to in a typical state(mean) is exp(0.135, 0.448) = (1.145, 1.565). And from Table 3, the 95th CI of odds of the person in Rural compare  to in urban is exp(0.476, 2.756) = (1.609, 15.737). By comparing these two CIs, we can see that they do not overlap, and the effect of RuralUrban is larger than the effect of state. Thus data support that Rural-urban differences are greater than differences between states.\newline
+$~~~~$Figures (1-4) showing the  posterior medians of probabilities of smoking over age by black, white, and hispanic americans. From the trending, comparing figure 1 to figure 3, and figure 2 to figure 4. For the same urban/rural status, the preobability change by the sec in each age group for all three races are about constant. By comparing figure 1 to figure 2, and figure 3 to figure 4, we can see that the probability of white and hispanic americans of smoking cigarettes is low when age is around 11 -14 in urban area, and after 14, they starts to catch up. While in rural area, they have a higher probability of smoking at young age, and have a more smooth increase over age compared to urban area. The black americans, on the other side, seems to have a similar growth of probability of smoking as age growth under the effect of urban/rural.  
+
+
+### Summary of Conclusion:
+$~~~~$The study modelled the relation between each age, gender, race, and urban/rural with probability of smoking cigarettes among teenagers within different schools and states. It counts the specific random effect of school, and state, and as a result, the data does not support the hypothesis of geographic variation in the rate of students smoking cigarettes is substantially greater than variation amongst schools, but also put forward that variation amongst school has a higher probability of been greater than variation amongst states. \newline
+$~~~~$When considering the effect of urban/rural, this research find out that a person in rural area is around (1.609, 15.737) times the odds of being smoking cigarettes as the person in urban area. While a person in the smoking state with one standard deviation is around (1.145, 1.565) times the odds of being smoking cigarettes as the person in a typical state. Hence the study suggest that Rural-urban differences are greater than differences between states.\newline
+$~~~~$It is also crucial that the reserach finds out that age effect on smoking for white and hispanic americans are different by rurality, but not sex. First of all, the effect of age on smoking acts on all three races would been decreased as they are older (age 17-18). The effect of age on white and hispanic americans of smoking cigarettes is low when age is around 11 -14 in urban area, in contrary, the effect is more efficient when they are on ages of 14-18 comparing to black americans. While in rural area, they have a higher probability of smoking at young age, and have a more smooth increase over age compared to urban area. The black americans, on the other side, seems to have a similar growth of probability of smoking as age growth under the effect of urban/rural. For different sex, nor three of them would impact on the age effect on smoking.
+

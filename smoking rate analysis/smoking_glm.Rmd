@@ -1,0 +1,96 @@
+---
+title: "Americian Youth Smoking Rate"
+author: "Yeyunfei Jiang (1004170354)"
+date: "2020/10/2"
+output: pdf_document
+---
+
+
+### Introduction:
+
+$~~~~$Smoking causes cancer, heart disease, stroke, lung diseases and  diabetes, which is a major health concern for youth.The research question of interest concerns the usage of cigar among white, black and hispanic Americians, and the likelihood of having used a electronic cigarettes for  two individuals of the different sexes. Two hypothesis are made as follows:\newline
+$~~~~$ 1. Smoking of cigars, cigarillos or little cigars is no more common amongst Americans of European 
+ancestry than for Hispanic-Americans and African-Americans, once one accounts for the fact that
+white Americans more likely to live in rural areas and cigar smoking is a rural phenomenon.\newline
+$~~~~$ 2. The likelihood of having used $~$a electronic cigarettes on at least one occasion is the same for two
+individuals of the different sexes, provided their age, ethnicity, and other demographic characteristics
+are similar.\newline
+$~~~~$The dataset used in this study is from 2019 American National Youth Tobacco Survey, which contains over 18000 survey from Americian youth of different races.
+```{r,echo=FALSE, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(ggplot2)
+
+load("~/STA442/STA442/smoke.RData")
+smokesub = smoke[which(smoke$Age >= 10& !is.na(smoke$Race) ), ]
+smokesub$Agec = smokesub$Age - 16
+lmod_smoke = glm(ever_cigars_cigarillos_or ~  Race + RuralUrban + Sex + Agec, family='binomial'(link="logit"), data=smokesub)
+
+smokesub_plot <- smokesub %>% 
+  select(ever_cigars_cigarillos_or,Race,RuralUrban,Sex,Age,ever_ecigarette) 
+
+palette <- c(automatic = "#377EB8", manual = "#E41A1C")
+
+
+smokesub_plot1 <- filter(smokesub_plot, !is.na(ever_cigars_cigarillos_or) & !is.na(Sex) & !is.na(RuralUrban))
+
+smokesub_plot2 <- filter(smokesub_plot, !is.na(ever_ecigarette) & !is.na(Sex) & !is.na(RuralUrban))
+
+```
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, out.width='50%'}
+ggplot(smokesub_plot1,aes(factor(ever_cigars_cigarillos_or),fill=Race))+
+  geom_bar(position = 'dodge') +
+  labs(x='Ever tried smoking cigars, cigarillos, or little cigars',y='Counts') +
+  facet_grid(~RuralUrban) 
+  
+ggplot(smokesub_plot2,aes(factor(ever_ecigarette),fill=Sex))+
+  geom_bar(position = 'dodge') +
+  labs(x='Ever tried electronic cigarette, cigarillos, or little cigars',y='Counts') +
+  facet_grid(~RuralUrban)
+
+
+  
+
+```
+
+### Method:
+$~~~~$The two models used for this research are both binomial generlized linear model with logit link.
+$$log(\frac{\mu_i}{1-\mu_i})=X_i\beta$$
+$~~~~$Where $\mu_i$ is the probabilty of the ith student ever tried smoking cigars, cigarillos, or little cigars in first Model, and the probability of used an electronic cigarette in second model. The covariates in both model are gender(male, female), age(centered at 16), RuralUrban(Rural/Urban) and Race(white, asian, hispanic, native, black or pacific).
+
+### Results:
+$~~~~$Table 4 shows the parameter estimate and corresponding p-value for the Cigar model. And table 5 shows the 95% Confidence interval for the parameters. Where baseline probability is a 16 years old white male live in urban areas ever tried smoking cigars.
+
+```{r,echo=FALSE, message=FALSE, warning=FALSE}
+knitr::kable(summary(lmod_smoke)$coef, digits = 3, caption = " Summary of coefficient")
+logOdds2 =cbind(est = lmod_smoke$coef,confint(lmod_smoke, level = 0.95))
+odds2 =exp(logOdds2)
+odds2p = odds2/(1 +odds2)
+rownames(odds2p)[1] = "Racewhite"
+knitr::kable(odds2p, digits = 3, caption = " Normal scale parameter estimate and 95% Confidence interval")
+```
+
+$~~~~$Table 6 shows the parameter estimate and corresponding p-value for the E cigarette model. And table 7 shows the 95% Confidence interval for the parameters. Where baseline probability is a 16 years old white male live in urban areas ever used electronic cigarettes.
+
+```{r,echo=FALSE, message=FALSE, warning=FALSE}
+lmod_ecigarette = glm(ever_ecigarette ~ 0 + Sex + RuralUrban + Race + Agec, family='binomial'(link="logit"), data=smokesub)
+knitr::kable(summary(lmod_ecigarette)$coef, digit = 3, caption = "Summary of coefficient")
+logOdds3 =cbind(est = lmod_ecigarette$coef,confint(lmod_ecigarette, level = 0.95))
+odds3 = exp(logOdds3)
+odds3p = odds3/(1 + odds3)
+rownames(odds3p)[1] = "SexM"
+knitr::kable(odds3p, digits = 3, caption = "Normal scale parameter estimate and 95% Confidence interval")
+
+```
+
+
+### Discussion:
+$~~~~$ It is worth noting that, this dataset the model uses only contains youth that between 11 and 19 years old, which can be bias for a measure of all Americians. Which means it can only test the hypothesis in youth group.\newline
+$~~~~$ As shown in Table 2 , a 95% confidence interval for a 16 years old white male live in urban areas ever tried cigars is (0.161, 0.186). Keep other variable constent, the CI for black and hispanic youth is (0.575, 0.635) and (0.46, 0.512) corresponding. Apparently, the probability of black and hispanic youth has a much higher probability of cigar usage compared to white youth. Hence. there is evidence to support the first hypothesis, namely, Smoking of cigars is no more common amongst Americans of Europeanancestry than for Hispanic-Americans and African-Americans. \newline
+$~~~~$ As shown in Table 4, a 95% confidence interval for a 16 years old white male live in urban areas ever tried e-cigarettes is (0.449, 0.482). Keep other variable constent, the CI for female is (0.433, 0.467). There is maximal a 5 percentage difference in the probability between male and female when the age, ethnicity, and other demographic characteristics
+are similar, which can be considered as a small deference. Hence, there is evidence to support the second hypothesis, namely, the likelihood of having used a electronic cigarettes on at least one occasion is the same for two individuals of the different sexes, provided their age, ethnicity, and other demographic characteristics are similar.
+
+### Summary of Conclusion:
+$~~~~$ The study modelled the relation between each race, gender, age with the proportion of cigars and e-cigarettes usage among youth by using the 2019 American National Youth Tobacco Survey .It revealed that Smoking of cigars is no longer common in Americans of European ancestry than for Hispanic-Americans and African-Americans. It also revealed that given age, ethnicity, and other demographic characteristics similar, the probability of male and female you of tried e-cigarettes is very close to each  other with a maximal percentage difference of 5.
+
