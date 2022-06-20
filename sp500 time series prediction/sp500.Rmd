@@ -1,0 +1,136 @@
+---
+title: "S&P500 Time Series Analysis"
+author: "Yeyunfei Jiang (1004170354)"
+date: "2021/4/10"
+header-includes:
+    - \usepackage{setspace}\doublespacing
+   
+fontsize: 12pt 
+output: pdf_document
+indent: true
+---
+# Abstract:
+|    In this report, I perform adequate exploratory analysis to S&P500, models the trend and forecast 10 periods into the future, shows the predicted values and 95% confidence intervals, and draw a conclusion on the trend.  Additional to that, the first first three predominant periods were found by periodogram analysis.
+
+
+# Introduction:
+|    The S&P500 includes 500 large companies listed on stock exchanges in the United States, which people believes is a well diversified portfolio that indices how the stock market moves and reflects economic situation for investors. This report mainly focus on analyzing this time series, constructing appropriate models which captures trend the most, using this model to forecasting 10 future periods, and use spectral analysis to find the first three predominant periods.
+|    The data set used in this report is from Federal Reserve Economic Data (FREDhttps://fred.stlouisfed.org/series/SP500). It contains 111 monthly end of period prices from Jan 2012 to Mar 2021.
+
+# Statistical Methods: 
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+library(astsa)
+library(ggplot2)
+library(dplyr)
+par(mfrow=c(2,1),mar=c(2,2,3.5,0)+.5,mgp=c(1.6,.6,0))
+d = read.csv('SP500.csv')
+d_ts=ts(d$SP500,start=2012,frequency=12)
+plot.ts(d_ts,ylab='Index',main='Monthly S&P 500 Index (2012,01-2021,03)')
+acf(d_ts,main='Monthly S&P 500 Index ACF')
+```
+
+|    From the ACF of this time series, we an see that the autocorrelation does not decay to zero fast as h increases, it indicates the time series is not stationary. Hence, need to take the first difference to transform this time series to a stationary process.
+
+\singlespacing
+```{r echo=FALSE, message=FALSE, warning=FALSE,fig.height=2.9}
+library(aTSA)
+d_d=diff(d_ts)
+plot(d_d,main='Detrended of Monthly S&P 500 Index',ylab='Index')
+```
+```{r echo=FALSE, message=FALSE, warning=FALSE,fig.height=3}
+adf.test(d_d)
+```
+\doublespacing
+
+|    The first difference of S&P 500 Index is plotted in the above figure, and using adf test, it is a stationary process under 0.05 level. Next observe ACF and PACF to identify the dependence order of model.
+```{r echo=FALSE, message=FALSE, warning=FALSE,out.width='50%'}
+library(forecast)
+acf(d_d,main='Detrended of Monthly S&P 500 Index ACF')
+pacf(d_d,main='Detrended of Monthly S&P 500 Index PACF')
+
+```
+
+\newpage
+
+|    From the graphs, we can see that the PACF is cutting off at lag 7, and ACF is cutting off at lag 2 too. No seasonality was found in the acf/pacf. So, considering two candidate models, ARIMA = (7, 1, 2), and ARIMA(6,1,2).
+
+# Result:
+
+\singlespacing
+
+### Output for ARIMA(7,1,2)
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+sarima(d_ts,7,1,2,details = FALSE)
+```
+*****
+### Output for ARIMA(6,1,2)
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+sarima(d_ts,6,1,2,details = FALSE)
+```
+
+\doublespacing
+
+|    We can see from the above output for ARIMA(7, 1, 2)model, the p-values for all estimates are smaller than$\alpha= 0.05$, except ar5, ar6, ar7. Showing other than ar5, ar6, ar7, all parameters are statistically significant.
+
+|    As well as the output for ARIMA(6, 1, 2)model, the p-values for all estimates are smaller than$\alpha= 0.05$ with no exception. Showing that all parameters are statistically significant.
+
+|    The parameters for ar indicate how would today's first difference of S&P500 move when the value of  ith  period ago increased by one, keeping other variables constant. In the ARIMA(6,1,2) model, all ar parameters are negative. A negative parameter for ar indicate a increase in the value ith period ago would decrease today's value.
+
+|    The parameters for ma indicate how would today's first difference of S&P500 move when the moving average of  ith  period ago increased by one, keeping other variables constant. In the ARIMA(6,1,2) model, all ma parameters are positive. A positive parameter for ma indicate a increase in the moving average ith period ago would increase today's value.
+
+
+\singlespacing
+
+```{r echo=FALSE, message=FALSE, warning=FALSE,out.width='99%'}
+m1=capture.output(sarima(d_ts,7,1,2))
+m1=capture.output(sarima(d_ts,6,1,2))
+```
+\doublespacing
+
+|    The time plot of the standardized residuals shows no obvious patterns, with few outliers exceeding 3 standard deviations in magnitude. The ACF of the standardized residuals shows all value lies in the confidence bands, suggests no apparent departure from randomness for both models. The normal Q-Q plot of the residuals shows the data fits the line pretty well and is reasonable follows normal distribution, with the some possible outliers at the tails show a deviation from normality. The Q-statistic is not significant, and shows we can not reject the data are independently distributed.
+|    Overall,the ARIMA(7, 1, 2) and ARIMA(6, 1, 2) models’ residuals seem iid and normal with mean zero and constant variance, which suggest the models fit well. Based on the AIC, AICc, and BIC of the two models, ARIMA(6,1,2) model has a smaller value for all of them, hence, we choose ARIMA(6,1,2).
+
+### Forecasting
+\singlespacing
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+SP500 = d_ts
+pred = sarima.for(SP500,10,6,1,2,)
+#Get the 5% Prediction interval
+upper <-pred$pred+qnorm(0.975)*pred$se
+lower <-pred$pred-qnorm(0.975)*pred$se
+#show predictions and 95% PI in a table
+knitr::kable(data.frame("Period"=seq(1,10),"Prediction"=pred$pred,"PI 95% Lower Bound"=lower,"PI 95% Upper Bound"=upper),caption='Forecasting value and 95% CI')
+```
+\doublespacing
+|    The forecasting values for the S&P500 shows a positive trend, but is fluctuating around. The width of the 95% confidence interval is around 400 for the first period and getting wider over time. We can not conclude the value would increase in 10 periods according to the 95% confidence interval, since the lower bound of period 10 is less than the value of last period.
+\singlespacing
+### Spectral Analysis
+
+```{r echo=FALSE, message=FALSE, warning=FALSE,fig.height=4}
+d.per =mvspec(SP500, log = "no")
+P1=d.per$details[order(d.per$details[,3],decreasing = TRUE),]
+abline(v=c(0.3,0.1,0.7),lty=2,col='grey')
+```
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+u1 = 2*P1[1,3]/qchisq(.025,2)
+l1 = 2*P1[1,3]/qchisq(.975,2)
+u2 = 2*P1[2,3]/qchisq(.025,2)
+l2 = 2*P1[2,3]/qchisq(.975,2)
+u3 = 2*P1[3,3]/qchisq(.025,2)
+l3 = 2*P1[3,3]/qchisq(.975,2)
+ci = data.frame(Order=c(1,2,3), Dominant.Freq=c(P1[1,1],P1[2,1],P1[3,1]), 
+                Period = c(P1[1,2],P1[2,2],P1[3,2]),
+                Spec=c(P1[1,3],P1[2,3],P1[3,3]),
+                'Lower Bond'=c(l1,l2,l3),
+                'Upper Bond'=c(u1,u2,u3)) 
+knitr::kable(ci)
+```
+\doublespacing
+
+|    The 95% confidence interval for the first three dominant frequencies of S&P500 series seem extremely wide. Hence, we cannot establish the significance of the peak. 
+
+# Discussion:
+|    The study modeled the trend of S&P500 from Jan 2012 to Mar 2020 using time series analysis. Two models were proposed, it appears that both ARIMA(7,1,2) and ARIMA(6,1,2) model fit the data well and satisfied all the model's assumption, based on model selection criteria, ARIMA(6,1,2) was selected.
+|    As a result, this model predicts for the future 10 periods, S&P500 would have a positive trend that seems to lead the index upwards, but by considering the 95% confidence interval, it is not promised to be increase in value in the next 10 periods.
+|    The study also uses periodogram analysis to identify the first three predominant periods, as it shown in the periodogram, the three predominant periods are (3.33, 10, 1.4286). However, the 95% confidence interval are too wide to draw the conclusion of the significance of the peak.
+|   Yet, there are still some limitations of this study. The model only count the stochastic trend, but not the deterministic trend. Some outliers are not fixed, for example, the period of pandemic has cause S&P500 a sudden drop around 34%. These unexpected events can not be predicted, however they can change the trend by a lot.
