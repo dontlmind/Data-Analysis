@@ -29,29 +29,29 @@
 <!-- ABOUT THE PROJECT -->
 ## About The Project
 
-[![Product Name Screen Shot][product-screenshot]](https://example.com)
+The COVID-19 is an ongoing worldwide pandemic of coronavirus disease 2019. As of 19 November
+2020, more than 56.1 million cases have been confirmed, with more than 1.34 million deaths attributed to
+COVID-19.
+The research question of interest relates to the impact of COVID-19 on different age groups. An imaginary
+government official makes the hypothesis that:
 
-There are many great README templates available on GitHub; however, I didn't find one that really suited my needs so I created this enhanced one. I want to create a README template so amazing that it'll be the last one you ever need -- I think this is it.
+* The first wave of the COVID-19 epidemic, in March, April and May, primarily affected the elderly.
+Deaths amongst the elderly in the spring were well above the historical averages, whereas the under
+50’s had deaths in line with previous years.
+  
+* The second wave began in September and was caused by irresponsible young people, primarily university undergraduates, acting irresponsibly. In the most recent death data, there is an increase in deaths
+in the under 50’s whereas the over 70’s have no more deaths than would be expected pre-covid.
 
-Here's why:
-* Your time should be focused on creating something amazing. A project that solves a problem and helps others
-* You shouldn't be doing the same tasks over and over like creating a README from scratch
-* You should implement DRY principles to the rest of your life :smile:
-
-Of course, no one template will serve all projects since your needs may be different. So I'll be adding more in the near future. You may also suggest changes by forking this repo and creating a pull request or opening an issue. Thanks to all the people have contributed to expanding this template!
-
-Use the `BLANK_README.md` to get started.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
+### Data Scource
 
 
 ### Built With
 
-This section should list any major frameworks/libraries used to bootstrap your project. Leave any add-ons/plugins for the acknowledgements section. Here are a few examples.
-
 ![Language](https://img.shields.io/badge/R-276DC3?style=for-the-badge&logo=r&logoColor=white)  
-
+![Language](https://img.shields.io/badge/RStudio-75AADB?style=for-the-badge&logo=RStudio&logoColor=white)  
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
