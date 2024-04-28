@@ -9,11 +9,7 @@
       </ul>
     </li>
     <li>
-      <a href="#getting-started">Getting Started</a>
-      <ul>
-        <li><a href="#prerequisites">Prerequisites</a></li>
-        <li><a href="#installation">Installation</a></li>
-      </ul>
+      <a href="#result">Resukt</a>
     </li>
   </ol>
 </details>
@@ -39,8 +35,9 @@ in the under 50’s whereas the over 70’s have no more deaths than would be ex
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
-### Data Scource
-
+### Data Source
+Data is from daily mortality counts in Quebec:
+<a href="https://www.stat.gouv.qc.ca/statistiques/population-demographie/deces-mortalite/WeeklyDeaths_QC_2010-2020_AgeGr.csv"> data source </a>
 
 ### Built With
 
@@ -51,44 +48,17 @@ in the under 50’s whereas the over 70’s have no more deaths than would be ex
 
 
 
-<!-- GETTING STARTED -->
-## Getting Started
+<!-- RESULT -->
+## Result
 
-This is an example of how you may give instructions on setting up your project locally.
-To get a local copy up and running follow these simple example steps.
-
-### Prerequisites
-
-This is an example of how to list things you need to use the software and how to install them.
-* npm
-  ```sh
-  npm install npm@latest -g
-  ```
-
-### Installation
-
-_Below is an example of how you can instruct your audience on installing and setting up your app. This template doesn't rely on any external dependencies or services._
-
-1. Get a free API Key at [https://example.com](https://example.com)
-2. Clone the repo
-   ```sh
-   git clone https://github.com/your_username_/Project-Name.git
-   ```
-3. Install NPM packages
-   ```sh
-   npm install
-   ```
-4. Enter your API in `config.js`
-   ```js
-   const API_KEY = 'ENTER YOUR API';
-   ```
+The study modeled the trend of mortality in Quebec for each age group and predicted the trending
+without COVID-19, moreover, the excess death due to the COVID-19 epidemic.
+As a result, this model supports the hypothesis that the first wave of the COVID-19 epidemic, in March,
+April and May primarily affected the elderly. The number of elderly deaths due to Covid-19 is significantly higher
+than youth.
+However, this study does not agree that the second wave, which began in September, is caused by
+irresponsible young people. In evidence, the excess death of youth does not significantly increase compared
+to the first wave. Also, it does not provide evidence that the elderly have no more deaths than would be
+expected pre-covid.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
-
-
-
-
-[Bootstrap.com]: https://img.shields.io/badge/Bootstrap-563D7C?style=for-the-badge&logo=bootstrap&logoColor=white
-[Bootstrap-url]: https://getbootstrap.com
-[JQuery.com]: https://img.shields.io/badge/jQuery-0769AD?style=for-the-badge&logo=jquery&logoColor=white
-[JQuery-url]: https://jquery.com 
