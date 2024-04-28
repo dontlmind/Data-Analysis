@@ -1,3 +1,4 @@
+<a name="readme-top"></a>
 <!-- TABLE OF CONTENTS -->
 <details>
   <summary>Table of Contents</summary>
@@ -33,9 +34,6 @@ Deaths amongst the elderly in the spring were well above the historical averages
 * The second wave began in September and was caused by irresponsible young people, primarily university undergraduates, acting irresponsibly. In the most recent death data, there is an increase in deaths
 in the under 50’s whereas the over 70’s have no more deaths than would be expected pre-covid.
 
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
 ### Data Source
 Data is from daily mortality counts in Quebec:
 <a href="https://www.stat.gouv.qc.ca/statistiques/population-demographie/deces-mortalite/WeeklyDeaths_QC_2010-2020_AgeGr.csv"> data source </a>
@@ -60,4 +58,4 @@ irresponsible young people. In evidence, the excess death of youth does not sign
 to the first wave. Also, it does not provide evidence that the elderly have no more deaths than would be
 expected pre-covid.
 
-
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
