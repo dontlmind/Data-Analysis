@@ -10,7 +10,7 @@
       </ul>
     </li>
     <li>
-      <a href="#result">Resukt</a>
+      <a href="#result">Result</a>
     </li>
   </ol>
 </details>
