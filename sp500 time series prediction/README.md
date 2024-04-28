@@ -47,6 +47,7 @@ The study modeled the trend of S&P500 from Jan 2012 to Mar 2020 using time serie
 analysis. Two models were proposed, and it appears that both ARIMA(7,1,2) and ARIMA(6,1,2)
 model fit the data well and satisfied all the model’s assumptions, based on model selection
 criteria, ARIMA(6,1,2) was selected.
+
 As a result, this model predicts for the next 10 periods, the S&P500 will have a positive
 trend that seems to lead the index upwards, but by considering the 95% confidence interval,
 it is not promised to increase in value in the next 10 periods.
@@ -54,6 +55,7 @@ The study also uses periodogram analysis to identify the first three predominant
 shown in the periodogram, the three predominant periods are (3.33, 10, 1.4286). However,
 the 95% confidence interval are too wide to draw the conclusion of the significance of the
 peak.
+
 Yet, there are still some limitations of this study. The model only counts the stochastic
 trend, but not the deterministic trend. Some outliers are not fixed, for example, the period
 of the pandemic has caused the S&P500 a sudden drop around 34%. These unexpected events can
