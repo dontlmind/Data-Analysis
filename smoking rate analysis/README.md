@@ -19,26 +19,38 @@
 
 <!-- ABOUT THE PROJECT -->
 ## About The Project
+This research project is divided into two distinct but interrelated parts, 
+each addressing separate facets of tobacco use across various demographics in the United States.
 
-The COVID-19 is an ongoing worldwide pandemic of coronavirus disease 2019. As of 19 November
-2020, more than 56.1 million cases have been confirmed, with more than 1.34 million deaths attributed to
-COVID-19.
-The research question of interest relates to the impact of COVID-19 on different age groups. An imaginary
-government official makes the hypothesis that:
+1) The research question of interest relates to the variation among the US states that exist and that there is a 
+variation from one school to the next, A secondary task is to 
+convey the differences in the effect of age on smoking for white, Black, and Hispanic Americans. The effect is 
+expected to be different by sex and by rurality. Two hypotheses are made as follows:
 
-* The first wave of the COVID-19 epidemic, in March, April and May, primarily affected the elderly.
-Deaths amongst the elderly in the spring were well above the historical averages, whereas the under
-50’s had deaths in line with previous years.
-  
-* The second wave began in September and was caused by irresponsible young people, primarily university undergraduates, acting irresponsibly. In the most recent death data, there is an increase in deaths
-in the under 50’s whereas the over 70’s have no more deaths than would be expected pre-covid.
+* Geographic variation (between states) in the rate of students smoking cigarettes is substantially greater
+than the variation amongst schools. As a result, tobacco control programs should target the states with the
+most smoking and not concern themselves with finding particular schools where smoking is a problem.
+* Rural-urban differences are much greater than differences between states.
+
+2) The research question of interest concerns the usage of cigars among white, black, and Hispanic
+Americans, and the likelihood of having used an electronic cigarette for two individuals of different
+sexes. Two hypotheses are made as follows:
+
+* Smoking of cigars, cigarillos, or little cigars is no more common amongst Americans of European
+ancestry than for Hispanic-Americans and African-Americans, once one accounts for the fact that white
+Americans are more likely to live in rural areas and cigar smoking is a rural phenomenon.
+
+* The likelihood of having used an electronic cigarette on at least one occasion is the same for two
+individuals of different sexes provided their age, ethnicity, and other demographic characteristics are
+similar.
 
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 ### Data Source
-Data is from daily mortality counts in Quebec:
-<a href="https://www.stat.gouv.qc.ca/statistiques/population-demographie/deces-mortalite/WeeklyDeaths_QC_2010-2020_AgeGr.csv"> data source </a>
+The dataset used in this study is from 2019 American National Youth Tobacco Survey, which contains
+over 18000 surveys from American youth of different races:
+<a href="http://pbrown.ca/teaching/appliedstats/data/smoke.RData"> data source </a>
 
 ### Built With
 
@@ -49,13 +61,28 @@ Data is from daily mortality counts in Quebec:
 <!-- RESULT -->
 ## Result
 
-The study modeled the trend of mortality in Quebec for each age group and predicted the trending
-without COVID-19, moreover, the excess deaths due to the COVID-19 epidemic.
-As a result, this model supports the hypothesis that the first wave of the COVID-19 epidemic, in March,
-April and May primarily affected the elderly. The number of elderly deaths due to Covid-19 is significantly higher
-than youth.
+The first part modeled the relation between each age, gender, race, and urban/rural with the probability of
+smoking cigarettes among teenagers within different schools and states. It counts the specific random effect
+of school and state, and as a result, the data does not support the hypothesis that geographic variation in
+the rate of students smoking cigarettes is substantially greater than variation amongst schools, but also put
+forward that variation amongst school has a higher probability of being greater than variation amongst states.
+When considering the effect of urban/rural, this research finds out that a person in a rural area is around
+(1.609, 15.737) times the odds of smoking cigarettes as a person in an urban area. While a person in
+the smoking state with one standard deviation is around (1.145, 1.565) times the odds of smoking
+cigarettes as the person in a typical state. Hence the study suggests that Rural-urban differences are greater
+than differences between states.  
 
-However, this study does not agree that the second wave, which began in September, is caused by
-irresponsible young people. In evidence, the excess death of youth does not significantly increase compared
-to the first wave. Also, it does not provide evidence that the elderly have no more deaths than would be
-expected pre-covid.
+It is also crucial that the research finds out that age effects on smoking for white and Hispanic Americans
+are different by rurality, but not sex. First of all, the effect of age on smoking acts on all three races would
+be decreased as they are older (age 17-18). The effect of age on white and Hispanic Americans smoking
+cigarettes is low when the age is around 11 -14 in urban areas, on the contrary, the effect is more efficient when they
+are ages of 14-18 compared to black Americans. While in rural areas, they have a higher probability
+of smoking at a young age and have a smoother increase over age compared to urban areas. Black
+Americans, on the other side, seem to have a similar growth of probability of smoking as age growth under
+the effect of urban/rural. For different sexes, neither three of them would impact the age effect on smoking.
+
+The second part modeled the relation between each race, gender, and age with the proportion of cigars and e-cigarette usage among youth by using the 2019 American National Youth Tobacco Survey.It revealed that
+Smoking of cigars is no longer common in Americans of European ancestry than for Hispanic Americans and
+African-Americans. It also revealed that given age, ethnicity, and other demographic characteristics similar,
+the probability of males and females you of tried e-cigarettes is very close to each other with a maximal
+percentage difference of 5.
