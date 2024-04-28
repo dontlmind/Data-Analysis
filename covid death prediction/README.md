@@ -44,21 +44,19 @@ Data is from daily mortality counts in Quebec:
 ![Language](https://img.shields.io/badge/R-276DC3?style=for-the-badge&logo=r&logoColor=white)  
 ![Language](https://img.shields.io/badge/RStudio-75AADB?style=for-the-badge&logo=RStudio&logoColor=white)  
 
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
-
 
 <!-- RESULT -->
 ## Result
 
 The study modeled the trend of mortality in Quebec for each age group and predicted the trending
-without COVID-19, moreover, the excess death due to the COVID-19 epidemic.
+without COVID-19, moreover, the excess deaths due to the COVID-19 epidemic.
 As a result, this model supports the hypothesis that the first wave of the COVID-19 epidemic, in March,
 April and May primarily affected the elderly. The number of elderly deaths due to Covid-19 is significantly higher
 than youth.
+
 However, this study does not agree that the second wave, which began in September, is caused by
 irresponsible young people. In evidence, the excess death of youth does not significantly increase compared
 to the first wave. Also, it does not provide evidence that the elderly have no more deaths than would be
 expected pre-covid.
 
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
