@@ -1,3 +1,4 @@
+<a name="readme-top"></a>
 <!-- TABLE OF CONTENTS -->
 <details>
   <summary>Table of Contents</summary>
@@ -44,9 +45,6 @@ Americans are more likely to live in rural areas and cigar smoking is a rural ph
 individuals of different sexes provided their age, ethnicity, and other demographic characteristics are
 similar.
 
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
 ### Data Source
 The dataset used in this study is from 2019 American National Youth Tobacco Survey, which contains
 over 18000 surveys from American youth of different races:
@@ -86,3 +84,5 @@ Smoking of cigars is no longer common in Americans of European ancestry than for
 African-Americans. It also revealed that given age, ethnicity, and other demographic characteristics similar,
 the probability of males and females you of tried e-cigarettes is very close to each other with a maximal
 percentage difference of 5.
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
